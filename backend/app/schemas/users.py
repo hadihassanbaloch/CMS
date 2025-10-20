@@ -13,6 +13,15 @@ class UserRead(BaseModel):
     id: int
     full_name: FullName
     email: EmailStr
+    is_admin: bool
 
     model_config = {
         "from_attributes": True}
+    
+class SigninRequest(BaseModel):
+    email: EmailStr = Field(json_schema_extra={"example": "john_doe@example.com"})
+    password: Password = Field(json_schema_extra={"example": "strongpassword123"})
+    
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
