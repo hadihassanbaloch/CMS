@@ -1,54 +1,62 @@
-import { useNavigate } from "react-router-dom";
+import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+import Navbar from '../components/Navbar';
+import Hero from '../components/Hero';
+import Services from '../components/Services';
+import About from '../components/About';
+import Testimonials from '../components/Testimonials';
+import Research from '../components/Research';
+import Contact from '../components/Contact';
+import Blog from '../components/Blog';
+import BlogPages from '../pages/Main pages/BlogPages';
+import Videos from '../components/Videos';
+import SurgeryDetails from '../pages/Main pages/SurgeryDetails';
+import Footer from '../components/Footer';
+import WhatsAppButton from '../components/WhatsAppButton';
+import Login from '../pages/Main pages/Login';
+import PatientPortal from '../pages/Main pages/PatientPortal';
 
-type Doc = { id: number; name: string; specialty: string; bio: string };
-
-const DOCTORS: Doc[] = [
-  { id: 1, name: "Dr. Ayesha Khan", specialty: "Cardiologist", bio: "10+ years experience in preventive cardiology." },
-  { id: 2, name: "Dr. Omar Malik", specialty: "Dermatologist", bio: "Acne, eczema, cosmetic dermatology." },
-  { id: 3, name: "Dr. Sara Ahmed", specialty: "Pediatrician", bio: "Child wellness, vaccinations, growth tracking." },
-];
-
-export default function LandingPage() {
-  const navigate = useNavigate();
-
+function LandingPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* hero */}
-      <header className="bg-white border-b">
-        <div className="mx-auto max-w-6xl px-4 py-6 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">CarePlus Clinic</h1>
-          <nav className="flex gap-3">
-            <a href="/auth" className="text-sm text-gray-700 hover:underline">Sign In</a>
-            <a href="/auth" className="text-sm rounded bg-gray-900 px-3 py-1.5 text-white">Create Account</a>
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-50/30 via-white to-primary-100/30"></div>
+        <div className="absolute top-0 left-0 w-[800px] h-[800px] blob blob-1"></div>
+        <div className="absolute top-1/3 right-0 w-[600px] h-[600px] blob blob-2"></div>
+        <div className="absolute bottom-0 left-0 w-[700px] h-[700px] blob blob-3"></div>
+        <div className="absolute top-2/3 right-0 w-[900px] h-[900px] blob blob-4"></div>
+      </div>
 
-      {/* intro */}
-      <section className="mx-auto max-w-6xl px-4 py-10">
-        <h2 className="text-3xl font-semibold mb-2">Book your appointment</h2>
-        <p className="text-gray-600 mb-8">
-          Choose a doctor and pick a time that works for you.
-        </p>
-
-        {/* doctor cards */}
-        <div className="grid gap-6 md:grid-cols-3">
-          {DOCTORS.map((d) => (
-            <article key={d.id} className="rounded-2xl border bg-white p-5 shadow-sm">
-              <div className="h-28 w-full rounded-xl bg-gray-100 mb-4" />
-              <h3 className="text-lg font-semibold">{d.name}</h3>
-              <p className="text-gray-600 text-sm">{d.specialty}</p>
-              <p className="text-gray-500 text-sm mt-2">{d.bio}</p>
-              <button
-                onClick={() => navigate(`/book?doctorId=${d.id}`)}
-                className="mt-4 w-full rounded-lg bg-gray-900 px-4 py-2 text-white hover:opacity-90"
-              >
-                Book appointment
-              </button>
-            </article>
-          ))}
-        </div>
-      </section>
+      {/* Content */}
+      <div className="relative z-10">
+        <Navbar />
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <main>
+                <Hero />
+                <Services />
+                <About />
+                <Testimonials />
+                <Research />
+                <Videos />
+                <Blog />
+                <Contact />
+              </main>
+            }
+          />
+          <Route path="/blog/*" element={<BlogPages />} />
+          <Route path="/surgery/:type" element={<SurgeryDetails />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/patient-portal" element={<PatientPortal />} />
+        </Routes>
+        <Footer />
+        <WhatsAppButton />
+      </div>
     </div>
   );
 }
+
+export default LandingPage;
