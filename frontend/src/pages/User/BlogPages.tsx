@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import BlogPost from '../../components/BlogPost';
+import BlogPost from '../../components/UserComponents/BlogPost';
 
 const BariatricSurgeryPost = () => (
   <BlogPost

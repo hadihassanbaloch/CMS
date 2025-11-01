@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./auth/useAuth";
 import type { ReactNode } from "react";
+import ScrollToTop from './Helpers/ScrollToTop';
+import PatientHistory from "./components/AdminComponents/History";
 
 import AuthPage from "./pages/AuthPage";
 import LandingPage from "./pages/LandingPage";
@@ -35,6 +37,7 @@ function AdminRoute({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop /> 
       <Routes>
         {/* Public auth page */}
         <Route
@@ -45,7 +48,6 @@ export default function App() {
             </PublicRoute>
           }
         />
-
         {/* Public landing (anyone can view) */}
         <Route path="/landing" element={<LandingPage />} />
 
@@ -53,19 +55,21 @@ export default function App() {
         <Route
           path="/book"
           element={
-            <ProtectedRoute>
-              <BookAppointmentPage />
-            </ProtectedRoute>
+            // <ProtectedRoute>
+            //   <BookAppointmentPage />
+            // </ProtectedRoute>
+            <BookAppointmentPage />
           }
         />
+           <Route path="/admin/patient/:id/history" element={<PatientHistory />} />
 
         {/* Admin dashboard (requires admin) */}
         <Route
           path="/admin"
           element={
-            <AdminRoute>
+            // <AdminRoute>
               <AdminDashboard />
-            </AdminRoute>
+            
           }
         />
 

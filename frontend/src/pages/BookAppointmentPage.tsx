@@ -2,8 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { get, post, ApiError } from "../api/client";
-import DatePicker from "react-datepicker";
+import Contact  from "../components/UserComponents/Contact";
 import "react-datepicker/dist/react-datepicker.css";
+import Navbar from "../components/UserComponents/Navbar";
+import Footer from "../components/UserComponents/Footer";
+import WhatsAppButton from "../components/UserComponents/WhatsAppButton";
+// ...existing code...
 
 type Appt = { doctor_id: number; start_at: string; end_at: string };
 
@@ -136,54 +140,29 @@ export default function BookAppointmentPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-2xl shadow-md w-full max-w-md"
-      >
-        <h2 className="text-2xl font-semibold mb-6 text-center">
-          Book Appointment (Doctor {doctorId})
-        </h2>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated Background (matching LandingPage) */}
+      <div className="fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-50/30 via-white to-primary-100/30"></div>
+        <div className="absolute top-0 left-0 w-[800px] h-[800px] blob blob-1"></div>
+        <div className="absolute top-1/3 right-0 w-[600px] h-[600px] blob blob-2"></div>
+        <div className="absolute bottom-0 left-0 w-[700px] h-[700px] blob blob-3"></div>
+        <div className="absolute top-2/3 right-0 w-[900px] h-[900px] blob blob-4"></div>
+      </div>
 
-        {/* Date & time picker */}
-        <label className="block mb-3 text-sm font-medium text-gray-700">
-          Date & Time
-          <DatePicker
-            selected={start}
-            onChange={(d) => setStart(d)}
-            showTimeSelect
-            timeIntervals={30}
-            dateFormat="yyyy-MM-dd h:mm aa"
-            className="mt-1 w-full border rounded-lg px-3 py-2"
-            minDate={new Date()}
-            minTime={minTime}
-            maxTime={maxTime}
-            filterTime={filterTime}
-            placeholderText="Select date & time"
-          />
-        </label>
+      {/* Content */}
+      <div className="relative z-10">
+        <Navbar />
 
-        <label className="block mb-4 text-sm font-medium text-gray-700">
-          Reason (optional)
-          <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            className="mt-1 w-full border rounded-lg px-3 py-2"
-            rows={2}
-            placeholder="e.g., Follow-up for blood pressure"
-          />
-        </label>
+        <main className="py-12 px-4">
+          <div className="mt-5">
+            <Contact/>
+          </div>
+        </main>
 
-        {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-lg bg-gray-900 text-white py-2 font-medium hover:opacity-90 disabled:opacity-60"
-        >
-          {loading ? "Booking..." : "Confirm Appointment"}
-        </button>
-      </form>
+        <Footer />
+        <WhatsAppButton />
+      </div>
 
       {/* Success Modal */}
       {successOpen && (
@@ -201,7 +180,7 @@ export default function BookAppointmentPage() {
                 Stay
               </button>
               <button
-                className="rounded-lg bg-gray-900 text-white px-4 py-2"
+                className="rounded-lg bg-primary-900 text-white px-4 py-2"
                 onClick={() => navigate("/landing")}
               >
                 Go to Landing
@@ -213,4 +192,3 @@ export default function BookAppointmentPage() {
     </div>
   );
 }
- 
