@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { Menu, X, Stethoscope, User } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-import type { Session } from '@supabase/supabase-js'; 
+import { useAuth } from '../auth/useAuth';
 
 const Navbar = () => {
-  const [session, setSession] = useState<Session | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { token } = useAuth();
   const isHomePage = location.pathname === '/landing';
 
   React.useEffect(() => {
@@ -78,7 +77,7 @@ const Navbar = () => {
               className="flex items-center text-gray-600 hover:text-blue-600"
             >
               <User className="h-5 w-5 mr-1" />
-              {session ? 'My Portal' : 'Sign In'}
+              {token ? 'My Portal' : 'Sign In'}
             </Link>
           </div>
 
@@ -157,11 +156,11 @@ const Navbar = () => {
               Book Appointment
             </button>
             <Link
-              to={session ? "/patient-portal" : "/auth"}
+              to={token ? "/patient-portal" : "/auth"}
               className="block w-full text-center px-3 py-2 text-gray-600 hover:text-blue-600"
               onClick={() => setIsOpen(false)}
               >
-              {session ? 'My Portal' : 'Sign In'}
+              {token ? 'My Portal' : 'Sign In'}
             </Link>
 
           </div>

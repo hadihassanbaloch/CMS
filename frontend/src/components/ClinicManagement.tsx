@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { Building, Clock, Phone, MapPin, Plus, Edit, Trash2, Check, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, Phone, MapPin, Plus, Edit, Trash2 } from 'lucide-react';
 import Modal from './Modal';
 
 interface Clinic {
@@ -34,9 +33,45 @@ const defaultSchedule = {
   sunday: null
 };
 
+// Dummy clinic data
+const dummyClinics: Clinic[] = [
+  {
+    id: '1',
+    name: 'Hameed Latif Cosmetology Centre',
+    address: '81 Abu Bakr Block, New Garden Town',
+    phone: '+92 329 166 4350',
+    schedule: {
+      monday: { open: '16:00', close: '18:00' },
+      tuesday: { open: '16:00', close: '18:00' },
+      wednesday: { open: '16:00', close: '18:00' },
+      thursday: null,
+      friday: null,
+      saturday: null,
+      sunday: null
+    },
+    status: 'active'
+  },
+  {
+    id: '2',
+    name: 'Shalamar Hospital',
+    address: 'OPD, Room 4B, Shalamar Hospital',
+    phone: '+92 329 166 4350',
+    schedule: {
+      monday: null,
+      tuesday: null,
+      wednesday: null,
+      thursday: { open: '11:00', close: '13:00' },
+      friday: null,
+      saturday: null,
+      sunday: null
+    },
+    status: 'active'
+  }
+];
+
 const ClinicManagement = () => {
-  const [clinics, setClinics] = useState<Clinic[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [clinics, setClinics] = useState<Clinic[]>(dummyClinics);
+  const [loading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingClinic, setEditingClinic] = useState<Clinic | null>(null);
   const [formData, setFormData] = useState<ClinicFormData>({
@@ -47,77 +82,43 @@ const ClinicManagement = () => {
     status: 'active'
   });
 
-  useEffect(() => {
-    fetchClinics();
-  }, []);
-
-  const fetchClinics = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setClinics(data || []);
-    } catch (error) {
-      console.error('Error fetching clinics:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      if (editingClinic) {
-        const { error } = await supabase
-          .from('clinics')
-          .update({
-            name: formData.name,
-            address: formData.address,
-            phone: formData.phone || null,
-            schedule: formData.schedule,
-            status: formData.status
-          })
-          .eq('id', editingClinic.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('clinics')
-          .insert([{
-            name: formData.name,
-            address: formData.address,
-            phone: formData.phone || null,
-            schedule: formData.schedule,
-            status: formData.status
-          }]);
-
-        if (error) throw error;
-      }
-
-      fetchClinics();
-      closeModal();
-    } catch (error) {
-      console.error('Error saving clinic:', error);
+    
+    // Simulate saving
+    if (editingClinic) {
+      // Update existing clinic
+      setClinics(prev => prev.map(clinic => 
+        clinic.id === editingClinic.id 
+          ? { 
+              ...clinic, 
+              name: formData.name,
+              address: formData.address,
+              phone: formData.phone || null,
+              schedule: formData.schedule,
+              status: formData.status
+            }
+          : clinic
+      ));
+    } else {
+      // Add new clinic
+      const newClinic: Clinic = {
+        id: Date.now().toString(),
+        name: formData.name,
+        address: formData.address,
+        phone: formData.phone || null,
+        schedule: formData.schedule,
+        status: formData.status
+      };
+      setClinics(prev => [...prev, newClinic]);
     }
+
+    closeModal();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (!confirm('Are you sure you want to delete this clinic?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('clinics')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      fetchClinics();
-    } catch (error) {
-      console.error('Error deleting clinic:', error);
-    }
+    setClinics(prev => prev.filter(clinic => clinic.id !== id));
   };
 
   const closeModal = () => {

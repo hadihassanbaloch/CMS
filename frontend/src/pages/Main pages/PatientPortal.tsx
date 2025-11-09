@@ -1,10 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { supabase } from '../../lib/supabase';
 import { Calendar, Clock, Stethoscope, FileText } from 'lucide-react';
-import type { Session } from '@supabase/supabase-js'; 
+import { useAuth } from '../../auth/useAuth';
 
 interface Appointment {
   id: string;
@@ -16,49 +13,44 @@ interface Appointment {
   message?: string;
 }
 
+// Dummy data for now
+const dummyAppointments: Appointment[] = [
+  {
+    id: '1',
+    service: 'General Consultation',
+    preferred_date: '2025-11-15',
+    preferred_time: '10:00 AM',
+    status: 'confirmed',
+    created_at: '2025-11-10T08:00:00Z',
+    message: 'Regular checkup'
+  },
+  {
+    id: '2',
+    service: 'Blood Test',
+    preferred_date: '2025-11-20',
+    preferred_time: '9:30 AM',
+    status: 'pending',
+    created_at: '2025-11-09T14:30:00Z'
+  }
+];
+
 const PatientPortal = () => {
-  const [session, setSession] = useState<Session | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user, token, signout } = useAuth();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        fetchAppointments(session.user.email ?? '');
-
+    // Simulate loading time
+    const timer = setTimeout(() => {
+      if (user) {
+        setAppointments(dummyAppointments);
       }
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) {
-       fetchAppointments(session.user.email ?? '');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchAppointments = async (email: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('email', email)
-        .order('preferred_date', { ascending: false });
-
-      if (error) throw error;
-      setAppointments(data || []);
-    } catch (error) {
-      console.error('Error fetching appointments:', error);
-    } finally {
       setLoading(false);
-    }
-  };
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [user]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -73,7 +65,7 @@ const PatientPortal = () => {
     }
   };
 
-  if (!session) {
+  if (!token) {
     return (
       <div className="min-h-screen bg-gray-50 pt-24 pb-12">
         <div className="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg">
@@ -81,13 +73,13 @@ const PatientPortal = () => {
             <Stethoscope className="h-8 w-8 text-primary-600" />
             <h2 className="text-2xl font-bold text-gray-900 ml-3">Patient Portal</h2>
           </div>
-          <Auth
-            supabaseClient={supabase}
-            appearance={{ theme: ThemeSupa }}
-            providers={['google']}
-            redirectTo={`${window.location.origin}/patient-portal`}
-            theme="light"
-          />
+          <p className="text-gray-600 text-center mb-4">Please sign in to view your appointments</p>
+          <button
+            onClick={() => navigate('/auth')}
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Go to Sign In
+          </button>
         </div>
       </div>
     );
@@ -100,7 +92,7 @@ const PatientPortal = () => {
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-2xl font-bold text-gray-900">My Appointments</h1>
             <button
-              onClick={() => supabase.auth.signOut()}
+              onClick={signout}
               className="text-gray-600 hover:text-gray-900"
             >
               Sign Out

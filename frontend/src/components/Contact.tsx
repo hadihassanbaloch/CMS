@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, Mail, MapPin, Send, Calendar, Clock, Check, CreditCard, Upload, Building } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { Phone, Mail, MapPin, Send, Clock, Check, CreditCard, Upload, Building } from 'lucide-react';
 
 interface FormData {
   patient_name: string;
@@ -24,6 +23,38 @@ interface Clinic {
   };
 }
 
+// Dummy clinic data
+const dummyClinics: Clinic[] = [
+  {
+    id: '1',
+    name: 'Hameed Latif Cosmetology Centre',
+    address: '81 Abu Bakr Block, New Garden Town',
+    schedule: {
+      monday: { open: '16:00', close: '18:00' },
+      tuesday: { open: '16:00', close: '18:00' },
+      wednesday: { open: '16:00', close: '18:00' },
+      thursday: null,
+      friday: null,
+      saturday: null,
+      sunday: null
+    }
+  },
+  {
+    id: '2',
+    name: 'Shalamar Hospital',
+    address: 'OPD, Room 4B, Shalamar Hospital',
+    schedule: {
+      monday: null,
+      tuesday: null,
+      wednesday: null,
+      thursday: { open: '11:00', close: '13:00' },
+      friday: null,
+      saturday: null,
+      sunday: null
+    }
+  }
+];
+
 const Contact = () => {
   const [formData, setFormData] = useState<FormData>({
     patient_name: '',
@@ -37,29 +68,11 @@ const Contact = () => {
     payment_proof: null,
     clinic_id: ''
   });
-  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [clinics] = useState<Clinic[]>(dummyClinics);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [selectedClinicSchedule, setSelectedClinicSchedule] = useState<{ [key: string]: { open: string; close: string } | null }>({});
-
-  React.useEffect(() => {
-    fetchClinics();
-  }, []);
-
-  const fetchClinics = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('*')
-        .eq('status', 'active');
-
-      if (error) throw error;
-      setClinics(data || []);
-    } catch (err) {
-      console.error('Error fetching clinics:', err);
-    }
-  };
 
   const handleClinicChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const clinicId = e.target.value;
@@ -108,65 +121,19 @@ const Contact = () => {
     setLoading(true);
     setError('');
 
-    let uploadedFilePath = '';
-
     try {
       if (!formData.payment_proof) {
         throw new Error('Please attach payment proof');
       }
 
-      // Upload payment proof
-      const fileExt = formData.payment_proof.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
+      // Simulate form submission delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      const { error: uploadError } = await supabase.storage
-        .from('payment-proofs')
-        .upload(fileName, formData.payment_proof);
-
-      if (uploadError) throw uploadError;
-
-      uploadedFilePath = fileName;
-
-      // Get the public URL of the uploaded file
-      const { data: { publicUrl } } = supabase.storage
-        .from('payment-proofs')
-        .getPublicUrl(fileName);
-
-      // Submit appointment data
-      const { data: appointmentData, error: submitError } = await supabase
-        .from('appointments')
-        .insert([{
-          patient_name: formData.patient_name,
-          email: formData.email,
-          phone: formData.phone,
-          service: formData.service,
-          message: formData.message,
-          preferred_date: formData.preferred_date,
-          preferred_time: formData.preferred_time,
-          payment_reference: formData.payment_reference,
-          payment_proof: publicUrl,
-          clinic_id: formData.clinic_id
-        }])
-        .select()
-        .single();
-
-      if (submitError) throw submitError;
-
-      // Send email notification
-      try {
-        const { data, error: functionError } = await supabase.functions.invoke('appointment-notification-v6', {
-          body: { record: appointmentData }
-        });
-
-        if (functionError) {
-          console.error('Email notification error:', functionError);
-        } else {
-          console.log('Email notification sent:', data);
-        }
-      } catch (emailErr) {
-        // Log but don't throw - appointment is still valid even if email fails
-        console.error('Failed to send email notification:', emailErr);
-      }
+      // Simulate successful submission
+      console.log('Form submitted with data:', {
+        ...formData,
+        payment_proof: formData.payment_proof?.name
+      });
 
       setSuccess(true);
       setFormData({
@@ -184,17 +151,6 @@ const Contact = () => {
     } catch (err: any) {
       setError(err.message || 'Failed to submit appointment request. Please try again.');
       console.error('Error submitting appointment:', err);
-
-      // Clean up uploaded file if it exists and there was an error
-      if (uploadedFilePath) {
-        try {
-          await supabase.storage
-            .from('payment-proofs')
-            .remove([uploadedFilePath]);
-        } catch (cleanupErr) {
-          console.error('Error cleaning up uploaded file:', cleanupErr);
-        }
-      }
     } finally {
       setLoading(false);
     }

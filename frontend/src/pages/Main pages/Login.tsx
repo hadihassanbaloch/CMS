@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { Lock, Mail, Stethoscope } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../auth/useAuth';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
+  const { signin } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,32 +15,10 @@ const Login = () => {
     setError('');
 
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (signInError) throw signInError;
-
-      if (!data.user) {
-        throw new Error('No user returned from authentication');
-      }
-
-      const { data: adminData, error: adminError } = await supabase
-        .from('admin_users')
-        .select('id')
-        .eq('user_id', data.user.id)
-        .single();
-
-      if (adminError || !adminData) {
-        throw new Error('Unauthorized access');
-      }
-
-      navigate('/admin');
+      await signin(email, password);
+      // Navigation will be handled by the App component based on user role
     } catch (err: any) {
-      setError(err.message === 'Invalid login credentials' 
-        ? 'Invalid email or password' 
-        : 'An error occurred during login');
+      setError(err.message || 'An error occurred during login');
     } finally {
       setLoading(false);
     }
