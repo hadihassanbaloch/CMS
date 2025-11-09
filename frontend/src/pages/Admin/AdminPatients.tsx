@@ -1,17 +1,12 @@
-// ...existing code...
-import React, { useEffect, useMemo, useState } from "react";
+// pages/Admin/AdminPatients.tsx
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/useAuth";
-import { useNavigate } from "react-router-dom";
-import PatientViewModal from "../../components/AdminComponents/patient";
+import { get, post, put, del, ApiError } from "../../api/client";
 
 type Patient = {
   id: number;
   full_name: string;
   phone_number: string;
-  email?: string;
-  dob?: string;
-  notes?: string;
-  photo?: string;
 };
 
 type UpsertPatient = {
@@ -25,48 +20,11 @@ function digitsOnly(s: string) {
   return s.replace(/\D/g, "");
 }
 
-function avatarUrl(name: string, id: number) {
-  const nm = encodeURIComponent(name);
-  const bg = "ef4444";
-  const color = "ffffff";
-  return `https://ui-avatars.com/api/?name=${nm}&background=${bg}&color=${color}&size=128`;
-}
-
-export default function AdminPatients({ search = "" }: { search?: string }) {
+export default function AdminPatients() {
   const { token } = useAuth();
-  const navigate = useNavigate();
 
-  const [patients, setPatients] = useState<Patient[]>([
-    {
-      id: 1,
-      full_name: "Ali Khan",
-      phone_number: "03001234567",
-      email: "ali.khan@example.com",
-      dob: "1990-04-02",
-      notes: "Diabetic — needs follow-up.",
-      photo: avatarUrl("Ali Khan", 1),
-    },
-    {
-      id: 2,
-      full_name: "Sara Ahmed",
-      phone_number: "03007654321",
-      email: "sara.ahmed@example.com",
-      dob: "1985-11-12",
-      notes: "Allergic to penicillin.",
-      photo: avatarUrl("Sara Ahmed", 2),
-    },
-    {
-      id: 3,
-      full_name: "Omar Farooq",
-      phone_number: "03009871234",
-      email: "omar.farooq@example.com",
-      dob: "1995-07-22",
-      notes: "Recovering from surgery.",
-      photo: avatarUrl("Omar Farooq", 3),
-    },
-  ]);
-
-  const [loading, setLoading] = useState(false);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   const [mode, setMode] = useState<Mode>(null);
@@ -79,14 +37,28 @@ export default function AdminPatients({ search = "" }: { search?: string }) {
   });
   const [editId, setEditId] = useState<number | null>(null);
 
-  const [viewedPatient, setViewedPatient] = useState<Patient | null>(null);
-
+  // Derived validity
   const nameValid = form.full_name.trim().length >= 4;
   const phoneValid = /^\d{11}$/.test(form.phone_number);
   const formValid = nameValid && phoneValid;
 
+  async function fetchPatients() {
+    if (!token) return;
+    setLoading(true);
+    setErr(null);
+    try {
+      const data = await get<Patient[]>("/patients", token);
+      setPatients(data ?? []);
+    } catch (e: any) {
+      setErr(e?.message ?? "Failed to load patients");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    // noop - hard-coded demo
+    fetchPatients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   function openCreate() {
@@ -109,57 +81,44 @@ export default function AdminPatients({ search = "" }: { search?: string }) {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (!token) return;
+
+    // Guard on our side to prevent 422s
     if (!formValid) {
       alert("Please enter a name (≥ 4 chars) and an 11-digit phone number.");
       return;
     }
+
     setSaving(true);
     try {
       if (mode === "create") {
-        const nextId = Math.max(0, ...patients.map((p) => p.id)) + 1;
-        setPatients((prev) => [
-          ...prev,
-          {
-            id: nextId,
-            ...form,
-            email: "",
-            dob: "",
-            notes: "",
-            photo: avatarUrl(form.full_name, nextId),
-          },
-        ]);
+        await post<Patient>("/patients", form, token);
       } else if (mode === "edit" && editId != null) {
-        setPatients((prev) =>
-          prev.map((p) => (p.id === editId ? { ...p, ...form, photo: p.photo ?? avatarUrl(form.full_name, p.id) } : p))
-        );
+        await put<Patient>(`/patients/${editId}`, form, token);
       }
+      await fetchPatients();
       closeModal();
     } catch (e) {
-      alert("Save failed");
+      const msg = e instanceof ApiError ? e.message : "Save failed";
+      alert(msg);
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: number) {
+    if (!token) return;
     if (!confirm("Delete this patient?")) return;
     setDeletingId(id);
     try {
+      await del(`/patients/${id}`, token);
       setPatients((prev) => prev.filter((p) => p.id !== id));
-    } catch {
-      alert("Delete failed");
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Delete failed";
+      alert(msg);
     } finally {
       setDeletingId(null);
     }
-  }
-
-  function handleView(p: Patient) {
-    setViewedPatient(p);
-  }
-
-  function goToHistory(p: Patient) {
-    // navigate to patient history page, passing patient in navigation state
-    navigate(`/admin/patient/${p.id}/history`, { state: { patient: p } });
   }
 
   const sorted = useMemo(
@@ -167,103 +126,62 @@ export default function AdminPatients({ search = "" }: { search?: string }) {
     [patients]
   );
 
-  const filtered = useMemo(() => {
-    const q = (search || "").trim().toLowerCase();
-    if (!q) return sorted;
-    return sorted.filter((p) => {
-      return (
-        (p.full_name || "").toLowerCase().includes(q) ||
-        (p.phone_number || "").toLowerCase().includes(q) ||
-        (p.email || "").toLowerCase().includes(q) ||
-        String(p.id).includes(q)
-      );
-    });
-  }, [search, sorted]);
-
   return (
-    <div className="max-w-5xl mx-auto bg-[#F5F5F5] min-h-screen p-6">
+    <div className="max-w-4xl mx-auto">
+      {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-[#212121]">Patient Directory</h2>
-          <p className="text-sm text-[#757575]">Manage patient records</p>
+          <h2 className="text-2xl font-semibold">Patients</h2>
+          <p className="text-sm text-gray-500">Manage patient records</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={openCreate}
-            className="rounded-lg bg-[#F44336] text-white px-4 py-2 hover:bg-[#E53935] shadow-sm transition"
-          >
-            New Patient
-          </button>
-        </div>
+        <button
+          onClick={openCreate}
+          className="rounded-lg bg-gray-900 text-white px-4 py-2 hover:opacity-90"
+        >
+          New Patient
+        </button>
       </div>
 
+      {/* Content */}
       {loading ? (
-        <div className="text-[#757575]">Loading…</div>
+        <div className="text-gray-500">Loading…</div>
       ) : err ? (
-        <div className="rounded-lg border border-[#ffcdd2] bg-[#ffebee] px-3 py-2 text-sm text-[#C62828]">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {err}
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-[#757575] shadow-sm">
-          No patients match your search.
+      ) : sorted.length === 0 ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-gray-600">
+          No patients yet. Click <span className="font-medium">New Patient</span> to add one.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-[0_2px_5px_rgba(0,0,0,0.1)]">
+        <div className="overflow-x-auto rounded-xl border bg-white">
           <table className="min-w-full text-sm">
-            <thead className="bg-[#F5F5F5] text-left">
+            <thead className="bg-gray-50 text-left">
               <tr>
-                <th className="px-4 py-2 font-medium text-[#212121]">Name</th>
-                <th className="px-4 py-2 font-medium text-[#212121]">Phone</th>
-                <th className="px-4 py-2 font-medium text-[#212121]">Actions</th>
+                <th className="px-4 py-3 font-medium text-gray-600">Name</th>
+                <th className="px-4 py-3 font-medium text-gray-600">Phone</th>
+                <th className="px-4 py-3 font-medium text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-t border-gray-200 hover:bg-[#FFF3E0] transition-colors">
+              {sorted.map((p) => (
+                <tr key={p.id} className="border-t">
+                  <td className="px-4 py-3">{p.full_name}</td>
+                  <td className="px-4 py-3">{p.phone_number}</td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={p.photo ?? avatarUrl(p.full_name, p.id)}
-                        alt={p.full_name}
-                        className="w-10 h-10 rounded-full object-cover shadow-sm"
-                      />
-                      <div>
-                        <div className="text-sm font-medium text-[#212121]">{p.full_name}</div>
-                        <div className="text-xs text-[#757575]">ID • {p.id}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-[#424242]">{p.phone_number}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-2">
                       <button
                         onClick={() => openEdit(p)}
-                        className="rounded-md border border-gray-300 px-3 py-1 text-[#424242] hover:bg-[#F5F5F5] transition"
+                        className="rounded-lg border px-3 py-1 hover:bg-gray-50"
                       >
                         Edit
                       </button>
-
                       <button
                         onClick={() => handleDelete(p.id)}
                         disabled={deletingId === p.id}
-                        className="rounded-md px-3 py-1 bg-[#FFEBEE] text-[#D32F2F] border border-[#E57373] hover:bg-[#FFCDD2] disabled:opacity-60 transition"
+                        className="rounded-lg border border-red-300 bg-red-50 px-3 py-1 text-red-700 hover:bg-red-100 disabled:opacity-60"
                       >
                         {deletingId === p.id ? "Deleting…" : "Delete"}
-                      </button>
-
-                      <button
-                        onClick={() => handleView(p)}
-                        className="rounded-md border border-gray-300 px-3 py-1 text-[#424242] hover:bg-[#F5F5F5] transition"
-                      >
-                        View
-                      </button>
-
-                      <button
-                        onClick={() => goToHistory(p)}
-                        className="rounded-md border border-gray-300 px-3 py-1 text-[#424242] bg-white hover:bg-[#F5F5F5] transition"
-                        title="Patient History"
-                      >
-                        History
                       </button>
                     </div>
                   </td>
@@ -274,35 +192,42 @@ export default function AdminPatients({ search = "" }: { search?: string }) {
         </div>
       )}
 
+      {/* Modal */}
       {mode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-[0_2px_10px_rgba(0,0,0,0.15)] border border-gray-200">
-            <div className="flex items-center justify-between border-b border-gray-200 p-4">
-              <h3 className="text-lg font-semibold text-[#212121]">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow">
+            <div className="flex items-center justify-between border-b p-4">
+              <h3 className="text-lg font-semibold">
                 {mode === "create" ? "New Patient" : "Edit Patient"}
               </h3>
-              <button onClick={closeModal} className="rounded-md px-2 py-1 text-[#757575] hover:bg-[#F5F5F5] transition">✕</button>
+              <button
+                onClick={closeModal}
+                className="rounded-md px-2 py-1 text-gray-500 hover:bg-gray-100"
+              >
+                ✕
+              </button>
             </div>
+
             <form onSubmit={handleSave} className="grid gap-4 p-4">
               <div>
-                <label className="block text-sm text-[#212121] mb-1">Full name</label>
+                <label className="block text-sm text-gray-700 mb-1">Full name</label>
                 <input
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#03A9F4]"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
                   value={form.full_name}
                   onChange={(e) => setForm({ ...form, full_name: e.target.value })}
                   required
                   minLength={4}
                 />
                 {!nameValid && form.full_name.length > 0 && (
-                  <p className="mt-1 text-xs text-[#F44336]">Enter at least 4 characters.</p>
+                  <p className="mt-1 text-xs text-red-600">Enter at least 4 characters.</p>
                 )}
               </div>
               <div>
-                <label className="block text-sm text-[#212121] mb-1">Phone number</label>
+                <label className="block text-sm text-gray-700 mb-1">Phone number</label>
                 <input
                   type="tel"
                   inputMode="numeric"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#03A9F4]"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-900"
                   value={form.phone_number}
                   onChange={(e) =>
                     setForm({
@@ -315,7 +240,7 @@ export default function AdminPatients({ search = "" }: { search?: string }) {
                   pattern="^\d{11}$"
                 />
                 {!phoneValid && form.phone_number.length > 0 && (
-                  <p className="mt-1 text-xs text-[#F44336]">Phone must be exactly 11 digits.</p>
+                  <p className="mt-1 text-xs text-red-600">Phone must be exactly 11 digits.</p>
                 )}
               </div>
 
@@ -324,14 +249,14 @@ export default function AdminPatients({ search = "" }: { search?: string }) {
                   type="button"
                   onClick={closeModal}
                   disabled={saving}
-                  className="rounded-lg border px-4 py-2 hover:bg-[#F5F5F5] disabled:opacity-60"
+                  className="rounded-lg border px-4 py-2 hover:bg-gray-50 disabled:opacity-60"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving || !formValid}
-                  className="rounded-lg bg-[#F44336] text-white px-4 py-2 hover:bg-[#D32F2F] disabled:opacity-60"
+                  className="rounded-lg bg-gray-900 text-white px-4 py-2 hover:opacity-90 disabled:opacity-60"
                 >
                   {saving ? "Saving…" : mode === "create" ? "Create" : "Save changes"}
                 </button>
@@ -340,11 +265,6 @@ export default function AdminPatients({ search = "" }: { search?: string }) {
           </div>
         </div>
       )}
-
-      {viewedPatient && (
-        <PatientViewModal patient={viewedPatient} onClose={() => setViewedPatient(null)} />
-      )}
     </div>
   );
 }
-// ...existing code...

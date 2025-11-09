@@ -1,17 +1,20 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Navbar from '../components/UserComponents/Navbar';
-import Hero from '../components/UserComponents/Hero';
-import Services from '../components/UserComponents/Services';
-import About from '../components/UserComponents/About';
-import Testimonials from '../components/UserComponents/Testimonials';
-import Research from '../components/UserComponents/Research';
-import Blog from '../components/UserComponents/Blog';
-import BlogPages from './User/BlogPages';
-import Videos from '../components/UserComponents/Videos';
-import SurgeryDetails from './User/SurgeryDetails';
-import Footer from '../components/UserComponents/Footer';
-import WhatsAppButton from '../components/UserComponents/WhatsAppButton';
+import Navbar from '../components/Navbar';
+import Hero from '../components/Hero';
+import Services from '../components/Services';
+import About from '../components/About';
+import Testimonials from '../components/Testimonials';
+import Research from '../components/Research';
+import Contact from '../components/Contact';
+import Blog from '../components/Blog';
+import BlogPages from '../pages/Main pages/BlogPages';
+import Videos from '../components/Videos';
+import SurgeryDetails from '../pages/Main pages/SurgeryDetails';
+import Footer from '../components/Footer';
+import WhatsAppButton from '../components/WhatsAppButton';
+import Login from '../pages/Main pages/Login';
+import PatientPortal from '../pages/Main pages/PatientPortal';
 
 function LandingPage() {
   return (
@@ -40,11 +43,14 @@ function LandingPage() {
                 <Research />
                 <Videos />
                 <Blog />
+                <Contact />
               </main>
             }
           />
           <Route path="/blog/*" element={<BlogPages />} />
           <Route path="/surgery/:type" element={<SurgeryDetails />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/patient-portal" element={<PatientPortal />} />
         </Routes>
         <Footer />
         <WhatsAppButton />
