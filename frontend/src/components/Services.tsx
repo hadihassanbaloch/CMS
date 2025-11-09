@@ -110,7 +110,7 @@ const Services = () => {
   ];
 
   return (
-    <section id="services" className="pt-10 pb-5 bg-gradient-to-b from-white to-gray-50">
+    <section id="services" className="py-20 bg-gradient-to-b from-white to-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl mb-4">

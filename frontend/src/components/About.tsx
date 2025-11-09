@@ -54,7 +54,7 @@ const About = () => {
   ];
 
   return (
-    <section id="about" className="pt-20 pb-0 relative overflow-hidden">
+    <section id="about" className="py-20 relative overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary-50 via-white to-secondary-50"></div>
       <div className="absolute top-0 left-0 w-64 h-64 bg-primary-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
