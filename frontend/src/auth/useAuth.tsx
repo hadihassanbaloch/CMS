@@ -6,7 +6,9 @@ interface User {
   id: number;
   full_name: string;
   email: string;
-  is_admin: boolean; 
+  is_admin: boolean;
+  google_id?: string;
+  profile_picture?: string;
 }
 
 interface AuthContextType {
@@ -15,6 +17,7 @@ interface AuthContextType {
   loading: boolean;
   signin: (email: string, password: string) => Promise<void>;
   signup: (full_name: string, email: string, password: string) => Promise<void>;
+  googleSignin: (googleToken: string) => Promise<void>;
   signout: () => void;
 }
 
@@ -68,6 +71,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // you can automatically signin here if desired
   }
 
+  // Google sign-in
+  async function googleSignin(googleToken: string) {
+    const data = await post<{ access_token: string }>("/auth/google-signin", {
+      google_token: googleToken,
+    });
+    localStorage.setItem("token", data.access_token);
+    setToken(data.access_token);
+    const me = await get<User>("/auth/me", data.access_token);
+    setUser(me);
+  }
+
   function signout() {
     localStorage.removeItem("token");
     setUser(null);
@@ -76,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, signin, signup, signout }}
+      value={{ user, token, loading, signin, signup, googleSignin, signout }}
     >
       {children}
     </AuthContext.Provider>

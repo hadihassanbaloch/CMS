@@ -1,1 +1,47 @@
 @import "tailwindcss";
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+:root {
+  --color-primary-50: #f0fdfc;
+  --color-primary-100: #ccfbf1;
+  --color-primary-200: #99f6e4;
+  --color-primary-300: #5eead4;
+  --color-primary-400: #2dd4bf;
+  --color-primary-500: #75C9C8;
+  --color-primary-600: #0d9488;
+  --color-primary-700: #0f766e;
+  --color-primary-800: #115e59;
+  --color-primary-900: #042A2B;
+
+  --color-cream-50: #fefefe;
+  --color-cream-100: #F7F4EA;
+  --color-cream-200: #f5f2e8;
+  --color-cream-300: #f0ede3;
+  --color-cream-400: #e8e3d3;
+  --color-cream-500: #ddd6c1;
+  --color-cream-600: #c9c0a8;
+  --color-cream-700: #b3a88c;
+  --color-cream-800: #9c8f70;
+  --color-cream-900: #847759;
+
+  --color-dark-50: #f8fafc;
+  --color-dark-100: #f1f5f9;
+  --color-dark-200: #e2e8f0;
+  --color-dark-300: #cbd5e1;
+  --color-dark-400: #94a3b8;
+  --color-dark-500: #64748b;
+  --color-dark-600: #475569;
+  --color-dark-700: #334155;
+  --color-dark-800: #1e293b;
+  --color-dark-900: #042A2B;
+}

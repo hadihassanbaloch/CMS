@@ -1,33 +1,39 @@
 import React, { useState } from 'react';
 import { Phone, Mail, MapPin, Send, Clock, Check, CreditCard, Upload, Building } from 'lucide-react';
+import { useAuth } from '../auth/useAuth';
 
+// Backend enum types (matching our API)
+type ClinicType = 'clinic_a' | 'clinic_b';
+type ServiceType = 'general_consultation' | 'bariatric_surgery' | 'laparoscopic_surgery' | 'general_surgery' | 'metabolic_surgery';
+
+// Updated FormData to match backend AppointmentCreate schema
 interface FormData {
-  patient_name: string;
-  email: string;
+  full_name: string;           // Changed from patient_name
   phone: string;
-  service: string;
+  clinic: ClinicType;          // Changed from clinic_id, now uses enum
+  service_required: ServiceType; // Changed from service, now uses enum
   message: string;
   preferred_date: string;
   preferred_time: string;
-  payment_reference: string;
   payment_proof: File | null;
-  clinic_id: string;
 }
 
 interface Clinic {
   id: string;
   name: string;
+  value: ClinicType;          // Added enum value mapping
   address: string;
   schedule: {
     [key: string]: { open: string; close: string } | null;
   };
 }
 
-// Dummy clinic data
+// Clinic data mapped to backend enum values
 const dummyClinics: Clinic[] = [
   {
     id: '1',
     name: 'Hameed Latif Cosmetology Centre',
+    value: 'clinic_a',         // Backend enum value
     address: '81 Abu Bakr Block, New Garden Town',
     schedule: {
       monday: { open: '16:00', close: '18:00' },
@@ -42,6 +48,7 @@ const dummyClinics: Clinic[] = [
   {
     id: '2',
     name: 'Shalamar Hospital',
+    value: 'clinic_b',         // Backend enum value
     address: 'OPD, Room 4B, Shalamar Hospital',
     schedule: {
       monday: null,
@@ -56,64 +63,39 @@ const dummyClinics: Clinic[] = [
 ];
 
 const Contact = () => {
+  const { token, user } = useAuth();
   const [formData, setFormData] = useState<FormData>({
-    patient_name: '',
-    email: '',
+    full_name: user?.full_name || '',              // Auto-fill from logged-in user
     phone: '',
-    service: '',
+    clinic: '' as ClinicType,         // Updated from clinic_id, empty default
+    service_required: '' as ServiceType, // Updated from service, empty default
     message: '',
     preferred_date: '',
     preferred_time: '',
-    payment_reference: '',
     payment_proof: null,
-    clinic_id: ''
   });
   const [clinics] = useState<Clinic[]>(dummyClinics);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  const [selectedClinicSchedule, setSelectedClinicSchedule] = useState<{ [key: string]: { open: string; close: string } | null }>({});
 
   const handleClinicChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const clinicId = e.target.value;
-    const clinic = clinics.find(c => c.id === clinicId);
-    setSelectedClinicSchedule(clinic?.schedule || {});
+    const clinicValue = e.target.value as ClinicType;
     setFormData(prev => ({
       ...prev,
-      clinic_id: clinicId,
+      clinic: clinicValue,           // Updated from clinic_id
       preferred_time: '' // Reset time when clinic changes
     }));
   };
 
   const getAvailableTimeSlots = () => {
-    if (!formData.preferred_date || !formData.clinic_id) return [];
-    
-    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const dayOfWeek = days[new Date(formData.preferred_date).getDay()];
-    
-    const schedule = selectedClinicSchedule[dayOfWeek];
-    if (!schedule) return [];
-
-    const { open, close } = schedule;
-    const slots = [];
-    let time = open;
-    
-    while (time <= close) {
-      slots.push(time);
-      // Add 1 hour
-      const [hours, minutes] = time.split(':');
-      const date = new Date();
-      date.setHours(parseInt(hours));
-      date.setMinutes(parseInt(minutes));
-      date.setHours(date.getHours() + 1);
-      time = date.toLocaleTimeString('en-US', { 
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-
-    return slots;
+    // Return standard appointment time slots
+    return [
+      '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+      '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+      '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
+      '18:00', '18:30', '19:00', '19:30', '20:00'
+    ];
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -122,31 +104,62 @@ const Contact = () => {
     setError('');
 
     try {
+      if (!user) {
+        throw new Error('Please sign in to book an appointment');
+      }
+
       if (!formData.payment_proof) {
         throw new Error('Please attach payment proof');
       }
 
-      // Simulate form submission delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create FormData for multipart/form-data submission
+      const submitFormData = new FormData();
+      
+      // Generate session info for better tracking
+      const sessionTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const sessionRef = `${user.id}_${sessionTimestamp}`;
+      
+      submitFormData.append('full_name', formData.full_name);
+      submitFormData.append('phone', formData.phone);
+      submitFormData.append('email', user.email); // Use logged-in user's email
+      submitFormData.append('clinic', formData.clinic);
+      submitFormData.append('service_required', formData.service_required);
+      submitFormData.append('preferred_date', formData.preferred_date);
+      submitFormData.append('preferred_time', formData.preferred_time);
+      submitFormData.append('payment_reference', `ONLINE_BOOKING_${sessionRef}`); // Session-specific reference
+      submitFormData.append('message', formData.message);
+      submitFormData.append('payment_proof', formData.payment_proof);
 
-      // Simulate successful submission
-      console.log('Form submitted with data:', {
-        ...formData,
-        payment_proof: formData.payment_proof?.name
+      // Submit to backend API
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch('http://localhost:8000/api/v1/appointments', {
+        method: 'POST',
+        headers,
+        body: submitFormData
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to submit appointment request');
+      }
+
+      const result = await response.json();
+      console.log('Appointment created successfully:', result);
 
       setSuccess(true);
       setFormData({
-        patient_name: '',
-        email: '',
+        full_name: '',
         phone: '',
-        service: '',
+        service_required: '' as ServiceType,
         message: '',
         preferred_date: '',
         preferred_time: '',
-        payment_reference: '',
         payment_proof: null,
-        clinic_id: ''
+        clinic: '' as ClinicType
       });
     } catch (err: any) {
       setError(err.message || 'Failed to submit appointment request. Please try again.');
@@ -299,13 +312,13 @@ const Contact = () => {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="patient_name" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 mb-1">
                       Full Name
                     </label>
                     <input
                       type="text"
-                      id="patient_name"
-                      value={formData.patient_name}
+                      id="full_name"
+                      value={formData.full_name}
                       onChange={handleChange}
                       required
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
@@ -327,21 +340,7 @@ const Contact = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="clinic_id" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="clinic" className="block text-sm font-medium text-gray-700 mb-1">
                     Select Clinic
                   </label>
                   <div className="relative">
@@ -349,8 +348,8 @@ const Contact = () => {
                       <Building className="h-5 w-5 text-gray-400" />
                     </div>
                     <select
-                      id="clinic_id"
-                      value={formData.clinic_id}
+                      id="clinic"
+                      value={formData.clinic}
                       onChange={(e) => {
                         handleClinicChange(e);
                         handleChange(e);
@@ -360,7 +359,7 @@ const Contact = () => {
                     >
                       <option value="">Select a clinic</option>
                       {clinics.map((clinic) => (
-                        <option key={clinic.id} value={clinic.id}>
+                        <option key={clinic.value} value={clinic.value}>
                           {clinic.name} - {clinic.address}
                         </option>
                       ))}
@@ -369,22 +368,22 @@ const Contact = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="service" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="service_required" className="block text-sm font-medium text-gray-700 mb-1">
                     Service Required
                   </label>
                   <select
-                    id="service"
-                    value={formData.service}
+                    id="service_required"
+                    value={formData.service_required}
                     onChange={handleChange}
                     required
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                   >
                     <option value="">Select a service</option>
-                    <option value="General Consultation">General Consultation</option>
-                    <option value="Bariatric Surgery">Bariatric Surgery</option>
-                    <option value="Laparoscopic Surgery">Laparoscopic Surgery</option>
-                    <option value="General Surgery">General Surgery</option>
-                    <option value="Metabolic Surgery">Metabolic Surgery</option>
+                    <option value="general_consultation">General Consultation</option>
+                    <option value="bariatric_surgery">Bariatric Surgery</option>
+                    <option value="laparoscopic_surgery">Laparoscopic Surgery</option>
+                    <option value="general_surgery">General Surgery</option>
+                    <option value="metabolic_surgery">Metabolic Surgery</option>
                   </select>
                 </div>
 
@@ -412,7 +411,6 @@ const Contact = () => {
                       value={formData.preferred_time}
                       onChange={handleChange}
                       required
-                      disabled={!formData.clinic_id || !formData.preferred_date}
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
                     >
                       <option value="">Select time</option>
@@ -423,21 +421,6 @@ const Contact = () => {
                       ))}
                     </select>
                   </div>
-                </div>
-
-                <div>
-                  <label htmlFor="payment_reference" className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Reference Number
-                  </label>
-                  <input
-                    type="text"
-                    id="payment_reference"
-                    value={formData.payment_reference}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter bank transfer reference number"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-                  />
                 </div>
 
                 <div>
@@ -503,7 +486,7 @@ const Contact = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-4 px-6 rounded-lg text-white bg-primary-600 hover:bg-primary-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 px-6 rounded-lg text-white bg-sky-800 hover:bg-sky-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>

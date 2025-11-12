@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Menu, X, Stethoscope, User } from 'lucide-react';
+import { Menu, X, Stethoscope, User, ChevronDown, Settings, LogOut, Calendar } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { token, user, signout } = useAuth();
   const isHomePage = location.pathname === '/landing';
 
   React.useEffect(() => {
@@ -72,13 +73,87 @@ const Navbar = () => {
             <button onClick={() => scrollToSection('contact')} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
               Book Appointment
             </button>
-            <Link
-              to="/patient-portal"
-              className="flex items-center text-gray-600 hover:text-blue-600"
-            >
-              <User className="h-5 w-5 mr-1" />
-              {token ? 'My Portal' : 'Sign In'}
-            </Link>
+            
+            {/* User Menu */}
+            {token && user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                  className="flex items-center text-gray-600 hover:text-blue-600 focus:outline-none"
+                >
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center mr-2">
+                    {user.profile_picture ? (
+                      <img
+                        src={user.profile_picture}
+                        alt="Profile"
+                        className="h-8 w-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-sm font-medium text-white">
+                        {user.full_name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <span className="hidden sm:block">{user.full_name.split(' ')[0]}</span>
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isUserDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                    <Link
+                      to="/appointments"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserDropdownOpen(false)}
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      My Appointments
+                    </Link>
+                    
+                    <Link
+                      to="/profile"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserDropdownOpen(false)}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Profile Settings
+                    </Link>
+                    
+                    {user.is_admin && (
+                      <Link
+                        to="/admin"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                      >
+                        <User className="h-4 w-4 mr-2" />
+                        Admin Dashboard
+                      </Link>
+                    )}
+                    
+                    <div className="border-t border-gray-200"></div>
+                    <button
+                      onClick={() => {
+                        signout();
+                        setIsUserDropdownOpen(false);
+                        navigate('/auth');
+                      }}
+                      className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/auth"
+                className="flex items-center text-gray-600 hover:text-blue-600"
+              >
+                <User className="h-5 w-5 mr-1" />
+                Sign In
+              </Link>
+            )}
           </div>
 
           <div className="md:hidden flex items-center">
@@ -155,13 +230,52 @@ const Navbar = () => {
             >
               Book Appointment
             </button>
-            <Link
-              to={token ? "/patient-portal" : "/auth"}
-              className="block w-full text-center px-3 py-2 text-gray-600 hover:text-blue-600"
-              onClick={() => setIsOpen(false)}
+            
+            {token && user ? (
+              <>
+                <Link
+                  to="/appointments"
+                  className="block w-full text-left px-3 py-2 text-gray-600 hover:text-blue-600"
+                  onClick={() => setIsOpen(false)}
+                >
+                  My Appointments
+                </Link>
+                <Link
+                  to="/profile"
+                  className="block w-full text-left px-3 py-2 text-gray-600 hover:text-blue-600"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Profile Settings
+                </Link>
+                {user.is_admin && (
+                  <Link
+                    to="/admin"
+                    className="block w-full text-left px-3 py-2 text-gray-600 hover:text-blue-600"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Admin Dashboard
+                  </Link>
+                )}
+                <button
+                  onClick={() => {
+                    signout();
+                    setIsOpen(false);
+                    navigate('/auth');
+                  }}
+                  className="block w-full text-left px-3 py-2 text-red-600 hover:text-red-700"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/auth"
+                className="block w-full text-center px-3 py-2 text-gray-600 hover:text-blue-600"
+                onClick={() => setIsOpen(false)}
               >
-              {token ? 'My Portal' : 'Sign In'}
-            </Link>
+                Sign In
+              </Link>
+            )}
 
           </div>
         </div>

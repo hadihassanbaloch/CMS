@@ -1,38 +1,75 @@
 from datetime import datetime
-from typing import Annotated, Optional
-
-from pydantic import BaseModel, Field, StringConstraints, model_validator
-
-# ---------- shared validators / aliases ----------
-Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=200)]
-
+from typing import Optional
+from pydantic import BaseModel, Field, EmailStr, field_validator
+from app.models.appointments import ClinicType, ServiceType, AppointmentStatus
 
 # ---------- request model ----------
 class AppointmentCreate(BaseModel):
-    doctor_id: int = Field(gt=0, json_schema_extra={"example": 1})
-    start_at: datetime = Field(json_schema_extra={"example": "2025-10-15T10:00:00+05:00"})
-    end_at: datetime = Field(json_schema_extra={"example": "2025-10-15T10:30:00+05:00"})
-    reason: Optional[Reason] = Field(default=None, json_schema_extra={"example": "Follow-up for blood pressure"})
+    full_name: str = Field(min_length=2, max_length=120, json_schema_extra={"example": "John Doe"})
+    phone: str = Field(min_length=10, max_length=20, json_schema_extra={"example": "+923001234567"})
+    email: EmailStr = Field(json_schema_extra={"example": "john.doe@example.com"})
+    
+    clinic: ClinicType = Field(json_schema_extra={"example": "clinic_a"})
+    service_required: ServiceType = Field(json_schema_extra={"example": "general_consultation"})
+    preferred_date: str = Field(min_length=10, max_length=10, json_schema_extra={"example": "2025-11-15"})
+    preferred_time: str = Field(min_length=5, max_length=8, json_schema_extra={"example": "14:30"})
+    
+    payment_reference: str = Field(min_length=5, max_length=100, json_schema_extra={"example": "TXN123456789"})
+    message: Optional[str] = Field(default=None, max_length=1000, json_schema_extra={"example": "I have high blood pressure"})
 
-    @model_validator(mode="after")
-    def _check_times(self):
-        # require timezone-aware datetimes
-        if self.start_at.tzinfo is None or self.end_at.tzinfo is None:
-            raise ValueError("start_at and end_at must include timezone information (e.g., +05:00 or Z)")
-
-        if self.end_at <= self.start_at:
-            raise ValueError("end_at must be after start_at")
-        return self
+    @field_validator('preferred_date')
+    @classmethod
+    def validate_date_format(cls, v):
+        try:
+            datetime.strptime(v, '%Y-%m-%d')
+            return v
+        except ValueError:
+            raise ValueError('Date must be in YYYY-MM-DD format')
+    
+    @field_validator('preferred_time')
+    @classmethod
+    def validate_time_format(cls, v):
+        try:
+            datetime.strptime(v, '%H:%M')
+            return v
+        except ValueError:
+            raise ValueError('Time must be in HH:MM format (24-hour)')
+    
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v):
+        # Remove any spaces, dashes, or parentheses
+        phone_clean = ''.join(filter(str.isdigit, v.replace('+', '')))
+        if len(phone_clean) < 10:
+            raise ValueError('Phone number must have at least 10 digits')
+        return v
 
 
 # ---------- response model ----------
 class AppointmentRead(BaseModel):
     id: int
-    doctor_id: int
-    start_at: datetime
-    end_at: datetime
-    reason: Optional[str] = None
-    created_by_user_id: int  # the authenticated user who booked it
+    full_name: str
+    phone: str
+    email: str
+    clinic: ClinicType
+    service_required: ServiceType
+    preferred_date: str
+    preferred_time: str
+    payment_reference: str
+    payment_proof: Optional[str] = None
+    message: Optional[str] = None
+    status: AppointmentStatus
+    created_by_user_id: Optional[int] = None  # Allow None for public appointments
+    created_at: datetime
+    updated_at: datetime
 
-    # allow ORM instances to be serialized automatically
+    model_config = {"from_attributes": True}
+
+
+# ---------- update model ----------
+class AppointmentUpdate(BaseModel):
+    status: Optional[AppointmentStatus] = None
+    payment_proof: Optional[str] = None
+    message: Optional[str] = None
+
     model_config = {"from_attributes": True}

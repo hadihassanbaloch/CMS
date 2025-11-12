@@ -1,12 +1,15 @@
-import { useState } from "react";
 import { useAuth } from "../../auth/useAuth";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import AdminAppointments from "./AdminAppointments";
 import AdminPatients from "./AdminPatients";
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState<"appointments" | "patients">("appointments");
   const { token, user, signout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Determine current tab based on URL path
+  const currentTab = location.pathname.includes('/admin/patients') ? 'patients' : 'appointments';
 
   if (!token) return <Navigate to="/auth" replace />;
 
@@ -20,9 +23,9 @@ export default function AdminDashboard() {
         </div>
         <nav className="flex-1 p-4 space-y-2">
           <button
-            onClick={() => setTab("appointments")}
+            onClick={() => navigate("/admin")}
             className={`block w-full text-left px-3 py-2 rounded-lg ${
-              tab === "appointments"
+              currentTab === "appointments"
                 ? "bg-gray-900 text-white"
                 : "text-gray-700 hover:bg-gray-100"
             }`}
@@ -30,9 +33,9 @@ export default function AdminDashboard() {
             Appointments
           </button>
           <button
-            onClick={() => setTab("patients")}
+            onClick={() => navigate("/admin", { state: { tab: "patients" } })}
             className={`block w-full text-left px-3 py-2 rounded-lg ${
-              tab === "patients"
+              currentTab === "patients"
                 ? "bg-gray-900 text-white"
                 : "text-gray-700 hover:bg-gray-100"
             }`}
@@ -52,7 +55,12 @@ export default function AdminDashboard() {
 
       {/* Content */}
       <main className="flex-1 p-8 overflow-y-auto">
-        {tab === "appointments" ? <AdminAppointments /> : <AdminPatients />}
+        {/* Only show components when we're exactly on /admin path */}
+        {location.pathname === "/admin" && (
+          <>
+            {(location.state as any)?.tab === "patients" ? <AdminPatients /> : <AdminAppointments />}
+          </>
+        )}
       </main>
     </div>
   );

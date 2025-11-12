@@ -4,8 +4,13 @@ import type { ReactNode } from "react";
 
 import AuthPage from "./pages/AuthPage";
 import LandingPage from "./pages/LandingPage";
-import BookAppointmentPage from "./pages/BookAppointmentPage";
-import AdminDashboard from "./pages/Admin/AdminDashboard";
+import UserProfile from "./pages/UserProfile";
+import MyAppointments from "./pages/MyAppointments";
+import AdminLayout from "./pages/Admin/AdminLayout";
+import AdminAppointments from "./pages/Admin/AdminAppointments";
+import AdminPatients from "./pages/Admin/AdminPatients";
+import PatientHistory from "./pages/Admin/PatientHistory";
+import VisitDetails from "./pages/Admin/VisitDetails";
 
 /** Protected pages (needs token) */
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -36,7 +41,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public auth page */}
+        {/* Public auth page - main entry point */}
         <Route
           path="/auth"
           element={
@@ -46,32 +51,55 @@ export default function App() {
           }
         />
 
-        {/* Public landing (anyone can view) */}
-        <Route path="/landing" element={<LandingPage />} />
-
-        {/* Patient: book appointment (requires sign-in) */}
+        {/* Protected landing page - shown after login */}
         <Route
-          path="/book"
+          path="/landing"
           element={
             <ProtectedRoute>
-              <BookAppointmentPage />
+              <LandingPage />
             </ProtectedRoute>
           }
         />
 
-        {/* Admin dashboard (requires admin) */}
+        {/* User profile (requires sign-in) */}
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <UserProfile />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* My Appointments (requires sign-in) */}
+        <Route
+          path="/appointments"
+          element={
+            <ProtectedRoute>
+              <MyAppointments />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin routes with nested layout */}
         <Route
           path="/admin"
           element={
             <AdminRoute>
-              <AdminDashboard />
+              <AdminLayout />
             </AdminRoute>
           }
-        />
+        >
+          <Route index element={<AdminAppointments />} />
+          <Route path="appointments" element={<AdminAppointments />} />
+          <Route path="patients" element={<AdminPatients />} />
+          <Route path="patients/:patientId" element={<PatientHistory />} />
+          <Route path="patients/:patientId/visit/:visitId" element={<VisitDetails />} />
+        </Route>
 
-        {/* defaults */}
-        <Route path="/" element={<Navigate to="/landing" replace />} />
-        <Route path="*" element={<Navigate to="/landing" replace />} />
+        {/* Main entry point - redirect to auth */}
+        <Route path="/" element={<Navigate to="/auth" replace />} />
+        <Route path="*" element={<Navigate to="/auth" replace />} />
       </Routes>
     </BrowserRouter>
   );

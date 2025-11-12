@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import { ApiError, get } from "../api/client";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 
 type Mode = "signin" | "signup";
 
@@ -54,6 +55,22 @@ export default function AuthPage() {
       else setError("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleGoogleSignInSuccess() {
+    try {
+      // After successful Google sign-in, navigate based on user role
+      const token = localStorage.getItem("token");
+      if (token) {
+        const me = await get<Me>("/auth/me", token);
+        navigate(me.is_admin ? "/admin" : "/landing");
+      } else {
+        navigate("/landing");
+      }
+    } catch (err) {
+      console.error("Error after Google sign-in:", err);
+      setError("Sign-in successful but navigation failed. Please refresh the page.");
     }
   }
 
@@ -157,7 +174,7 @@ export default function AuthPage() {
           </button>
         </form>
 
-        {/* Social (placeholder for later OAuth) */}
+        {/* Social OAuth */}
         <div className="mt-6">
           <div className="relative my-4">
             <div className="absolute inset-0 flex items-center">
@@ -167,14 +184,15 @@ export default function AuthPage() {
               <span className="bg-white px-2 text-gray-500">or</span>
             </div>
           </div>
+          
+          {/* Google Sign-In Button */}
           <div className="grid gap-2">
-            <button
-              disabled
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 disabled:opacity-60"
-              title="Coming soon"
-            >
-              Continue with Google (coming soon)
-            </button>
+            <GoogleSignInButton 
+              onError={(error) => setError(error)}
+              disabled={submitting}
+            />
+            
+            {/* Microsoft placeholder for future */}
             <button
               disabled
               className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 disabled:opacity-60"
